@@ -449,6 +449,32 @@ def run_dual_analysis(df, dataset_id, column, date_col):
         'working_day': working_result
     }
 # ================= ROUTES =================
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        # Validasi sederhana
+        if User.query.filter_by(username=username).first():
+            flash_single("Username sudah terdaftar!", "danger")
+            return redirect(url_for('register'))
+            
+        # Membuat user baru
+        new_user = User(
+            username=username,
+            password=generate_password_hash(password),
+            role='user' # Default role sebagai user
+        )
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        flash_single("Registrasi berhasil! Silakan login.", "success")
+        return redirect(url_for('login'))
+            
+    return render_template('register.html')
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -1446,4 +1472,4 @@ with app.app_context():
         db.session.commit()
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
