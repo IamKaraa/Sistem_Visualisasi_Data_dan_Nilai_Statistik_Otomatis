@@ -1,0 +1,449 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --primary-color: #5d5fef;
+    --primary-hover: #4a4cd8;
+    --bg-color: #f8fafc;
+    --card-bg: #ffffff;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --border-color: #e2e8f0;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+header {
+    background: white;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 12px 24px;
+}
+
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-weight: 700;
+    color: #5d5fef;
+}
+
+main {
+    display: flex;
+}
+
+.sidebar {
+    width: 260px;
+    background: white;
+    border-right: 1px solid #e2e8f0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: visible;
+}
+
+.sidea input {
+    width: 100%;
+    max-width: 219px;
+}
+
+.sidea button {
+    margin-bottom: 12px;
+}
+
+.container {
+    flex: 1;
+    padding: 24px;
+}
+
+/* ===== CARD CONTAINER ===== */
+.cards {
+    display: flex;
+    gap: 12px;
+    margin: 16px 0;
+    flex-wrap: nowrap; /* ⬅️ PENTING: tetap sebaris */
+    padding-bottom: 6px;
+}
+
+/* ===== INDIVIDUAL CARD ===== */
+.card {
+    flex: 1 1 0;
+    min-width: 160px;
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    color: #f8fafc;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    white-space: nowrap;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* ===== VALUE STYLE ===== */
+.card span {
+    font-size: 18px;
+    font-weight: 700;
+    color: #38bdf8; /* cyan */
+}
+
+/* ===== HOVER EFFECT ===== */
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.25);
+}
+
+/* ===== HORIZONTAL SCROLL BAR (MINIMAL) ===== */
+.cards::-webkit-scrollbar {
+    height: 6px;
+}
+
+.cards::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.2);
+    border-radius: 10px;
+}
+
+
+button {
+    width: 100%;
+    background: #5d5fef;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 8px;
+    margin-top: 10px;
+    cursor: pointer;
+}
+
+select {
+    width: 100%;
+    padding: 8px;
+    margin-top: 10px;
+}
+
+.admntbtn {
+    margin-left: 10px;
+    padding: 4px 8px;
+    border: 1px solid #5d5fef;
+    border-radius: 6px;
+    text-decoration: none;
+    color: #5d5fef;
+}
+
+.dataset-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 8px;
+    margin-bottom: 5px;
+    border-radius: 6px;
+    background: #f4f4f4;
+}
+
+.dataset-row.active {
+    background: #e6e7ff;
+    font-weight: bold;
+}
+
+.dataset-name {
+    text-decoration: none;
+    color: #333;
+    flex-grow: 1;
+}
+
+.dataset-name:hover {
+    color: #5d5fef;
+}
+
+.delete-btn {
+    background: none;
+    border: none;
+    color: #ff4d4d;
+    font-size: 14px;
+    cursor: pointer;
+    padding-left: 8px;
+}
+
+.delete-btn:hover {
+    color: #c40000;
+}
+
+/* Container dataset */
+.dataset-list {
+    display: flex;
+    justify-content: space-between; /* Nama di kiri, tombol di kanan */
+    align-items: center;
+    padding: 3px 8px;
+    background-color: #f9f9f9;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+    max-width: 219px;
+    margin-bottom: 10px;
+}
+
+/* Hover effect untuk seluruh container */
+.dataset-list:hover {
+    background-color: #e0e7ff; /* biru muda */
+}
+
+/* Nama dataset */
+.dataset-list a {
+    text-decoration: none;
+    color: #2a3f5f;
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+/* Tombol hapus */
+.dataset-list button {
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    color: #ef4444; /* merah */
+    transition: transform 0.2s, color 0.2s;
+    padding: 0px;
+    margin: 0px;
+
+}
+
+/* Hover effect tombol hapus */
+.dataset-list button:hover {
+    color: #b91c1c; /* merah lebih gelap */
+    transform: scale(1.2);
+}
+
+/* ================= DATASET TRUNCATE ================= */
+
+.dataset-container {
+    max-height: 800px;  /* maksimal tinggi kontainer */
+    overflow-y: auto;   /* scroll vertikal jika overflow */
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #f9f9f9;
+}
+
+/* opsional: styling tiap item */
+.dataset-list {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.dataset-list:last-child {
+    border-bottom: none;
+}
+
+.dataset-name-truncate {
+    max-width: 140px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+    position: relative;
+    cursor: pointer;
+}
+
+/* TOOLTIP */
+.dataset-name-truncate::after {
+    content: attr(data-full);
+    position: fixed;
+    background: linear-gradient(135deg, #111827, #1f2937);
+    color: #f9fafb;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    max-width: 280px;
+    white-space: normal;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.35);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 99999;
+}
+
+
+.logout {
+    color: #ef4444;
+    text-decoration: none;
+    font-weight: 700;
+    display: block;
+    padding: 12px;
+    text-align: center;
+    border: 2px solid #fee2e2;
+    border-radius: 10px;
+    transition: 0.3s;
+}
+
+.logout:hover {
+    background: #ef4444;
+    color: white;
+}
+
+.admntbtn {
+    border: 1.5px solid var(--primary-color);
+    color: var(--primary-color);
+    padding: 6px 16px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 0.85rem;
+    transition: 0.3s;
+}
+
+.admntbtn:hover {
+    background: var(--primary-color);
+    color: white;
+}
+
+/* ================= ANALYSIS DETAIL ================= */
+
+.analysis-section {
+    margin-top: 32px;
+    padding: 24px;
+    background: #ffffff;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+    margin-bottom: 10px;
+}
+
+.analysis-section h3 {
+    margin-bottom: 20px;
+    font-size: 20px;
+    font-weight: 600;
+    color: #1f2937; /* slate-800 */
+}
+
+.plot-wrapper {
+    width: 100%;
+    max-height: 600px;
+    background: #ffffff;
+    border-radius: 16px;
+    overflow: hidden; /* ⬅️ INI KUNCI */
+    box-shadow: 0 10px 28px rgba(0,0,0,0.08);
+    border: 1px solid #e5e7eb;
+    margin-bottom: 30px;
+}
+
+#plotDiv {
+    width: 100%;
+    height: 100%;
+}
+
+.plot-wrapper:hover {
+    box-shadow: 0 16px 40px rgba(0,0,0,0.12);
+}
+
+
+
+/* GRID */
+.trend-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+}
+
+/* CARD */
+.trend-item {
+    padding: 20px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #f9fafb, #ffffff);
+    border: 1px solid #e5e7eb;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.trend-item::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: #3b82f6; /* default blue */
+}
+
+/* HOVER EFFECT */
+.trend-item:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.1);
+}
+
+/* HEADER */
+.trend-item h4 {
+    margin-bottom: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #111827;
+}
+
+/* TEXT */
+.trend-item p {
+    margin: 6px 0;
+    font-size: 14px;
+    color: #374151;
+}
+
+.trend-item span {
+    font-weight: 600;
+    color: #111827;
+}
+
+/* ================= COLOR THEMES ================= */
+
+/* KENAIKAN */
+.trend-item:nth-child(1)::before {
+    background: #22c55e; /* green */
+}
+
+/* PENURUNAN */
+.trend-item:nth-child(2)::before {
+    background: #ef4444; /* red */
+}
+
+/* PERSENTASE */
+.trend-item:nth-child(3)::before {
+    background: #3b82f6; /* blue */
+}
+
+/* KELENGKAPAN */
+.trend-item:nth-child(4)::before {
+    background: #f59e0b; /* amber */
+}
+
+/* ================= RESPONSIVE ================= */
+@media (max-width: 768px) {
+    .analysis-section {
+        padding: 18px;
+    }
+
+    .trend-item {
+        padding: 16px;
+    }
+}
+
+

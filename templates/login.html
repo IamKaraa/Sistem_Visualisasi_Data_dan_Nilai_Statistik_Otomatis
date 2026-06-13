@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOGIN - DRAVA</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style/login.css') }}">
+</head>
+<body>
+    <div class="login-container">
+        <div class="card">
+            <div class="title">LOGIN</div>
+            
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                {% for message in messages %}
+                  <div class="alert">{{ message }}</div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('login') }}" autocomplete="off">
+                <div class="input-box">
+                    <input type="text" name="username" placeholder="Username"  autocomplete="off" autocorrect="off" required>
+                </div>
+                <div class="input-box">
+                    <input type="password" id="password" name="password" placeholder="Password" autocomplete="new-password" required>
+                </div>
+                <div class="button-box">
+                    <button type="submit">Login</button> 
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
+
+<script>
+window.onload = () => {
+    document.querySelectorAll('input').forEach(i => i.value = '');
+};
+</script>

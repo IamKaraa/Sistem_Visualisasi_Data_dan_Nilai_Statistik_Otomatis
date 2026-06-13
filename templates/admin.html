@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Management User - DRAVA</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style/admin.css') }}">
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <div class="logo"><strong>DRAVA</strong> <span style="font-weight: 400; opacity: 0.7;">ADMIN</span></div>
+            <nav class="navigation">
+                <ul>
+                    <li><a class="dash-btn" href="{{ url_for('index') }}" >Dashboard</a></li>
+                    <li><a class="logout-btn" href="{{ url_for('logout') }}" >Logout</a></li>
+                </ul>
+            </nav>
+            <div class="user-info">Logged in as: <strong>{{ current_user.username }}</strong></div>
+        </div>
+    </header>
+
+    <main class="container">
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert-success" style="padding: 15px; background-color: #dcfce7; color: #15803d; border-radius: 8px; margin-bottom: 20px; border: 1px solid #bbf7d0; font-weight: 600;">
+                {{ message }}
+            </div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <div class="page-header">
+            <div>
+                <h1>User Management</h1>
+                <p>Kelola akses pengguna dan administrator sistem.</p>
+            </div>
+            <button id="toggleFormBtn" class="btn-primary">+ Tambah User Baru</button>
+        </div>
+
+        <div id="addUserForm" class="card form-card shadow hide">
+            <div class="card-header">
+                <h3>Formulir Akun Baru</h3>
+            </div>
+            <form action="{{ url_for('manage_users') }}" method="POST" class="admin-form">
+                <div class="form-group">
+                    <input type="text" name="username" placeholder="Username" required>
+                    <input type="password" name="password" placeholder="Password" required>
+                    
+                    <div class="role-selector">
+                        <label>Role Pengguna:</label>
+                        <select name="role">
+                            <option value="user">User Biasa</option>
+                            <option value="admin">Administrator</option>
+                            </select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-success">Simpan Akun</button>
+                    <button type="button" id="cancelBtn" class="btn-text">Batal</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="editUserModal" class="modal hide">
+            <div class="modal-content">
+                <h3>Edit User</h3>
+
+                <form id="editUserForm" method="POST">
+                    <input type="hidden" name="user_id" id="editUserId">
+
+                    <div class="form-group">
+                        <input type="text" name="username" id="editUsername" required>
+
+                        <input
+                            type="password"
+                            name="password"
+                            placeholder="Password baru (opsional)"
+                        >
+
+                        <select name="role" id="editRole">
+                            <option value="user">User</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-success">Simpan</button>
+                        <button type="button" id="closeEditModal" class="btn-text">Batal</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card shadow">
+            <div class="card-header">
+                <h3>Daftar Pengguna Terdaftar</h3>
+            </div>
+            <div class="table-responsive">
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Waktu Pendaftaran</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>#{{ user.id }}</td>
+                            <td class="username-cell">{{ user.username }}</td>
+                            <td>
+                                {% if user.role == 'admin' %}
+                                    <span class="badge badge-admin">Admin</span>
+                                {% else %}
+                                    <span class="badge badge-user">User</span>
+                                {% endif %}
+                            </td>
+                            <td class="date-cell">User ID: {{ user.id }}</td> 
+                            <td>
+                            {% if user.id != current_user.id %}
+                            <button
+                                class="btn-edit"
+                                data-id="{{ user.id }}"
+                                data-username="{{ user.username }}"
+                                data-role="{{ user.role }}"
+                            >
+                                Edit
+                            </button>
+
+                            <form action="{{ url_for('delete_user', user_id=user.id) }}" method="POST" style="display:inline;">
+                                <button type="submit"
+                                    onclick="return confirm('Apakah Anda yakin ingin menghapus user {{ user.username }}?')"
+                                    class="btn-delete">
+                                    Hapus
+                                </button>
+                            </form>
+                            {% else %}
+                                <span style="color:#cbd5e1">(Anda)</span>
+                            {% endif %}
+                        </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const toggleBtn = document.getElementById('toggleFormBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const formContainer = document.getElementById('addUserForm');
+
+        // Fungsi Tampilkan Form
+        toggleBtn.addEventListener('click', () => {
+            formContainer.classList.toggle('hide');
+            if (!formContainer.classList.contains('hide')) {
+                formContainer.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+
+        // Fungsi Batal
+        cancelBtn.addEventListener('click', () => {
+            formContainer.classList.add('hide');
+        });
+
+        const editModal = document.getElementById('editUserModal');
+        const editForm = document.getElementById('editUserForm');
+
+        document.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('editUserId').value = btn.dataset.id;
+                document.getElementById('editUsername').value = btn.dataset.username;
+                document.getElementById('editRole').value = btn.dataset.role;
+
+                editForm.action = `/admin/user/edit/${btn.dataset.id}`;
+                editModal.classList.remove('hide');
+            });
+        });
+
+        document.getElementById('closeEditModal').addEventListener('click', () => {
+            editModal.classList.add('hide');
+        });
+    </script>
+</body>
+</html>
+

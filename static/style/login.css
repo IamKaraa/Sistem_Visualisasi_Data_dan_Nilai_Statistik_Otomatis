@@ -1,0 +1,98 @@
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background: #f0f2f5;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+.card {
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    width: 100%;
+    max-width: 350px;
+    text-align: center;
+}
+
+.title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin-bottom: 30px;
+    color: #1e293b;
+}
+
+.input-box {
+    margin-bottom: 20px;
+    width: 100%;
+}
+
+.input-box input {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    outline: none;
+    transition: 0.3s;
+    max-width: 243px;
+}
+
+.input-box button {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    outline: none;
+    transition: 0.3s;
+    max-width: 243px;
+}
+
+.input-box input:focus {
+    border-color: #5d5fef;
+    box-shadow: 0 0 0 3px rgba(93, 95, 239, 0.1);
+}
+
+.input-box button:focus {
+    border-color: #5d5fef;
+    box-shadow: 0 0 0 3px rgba(93, 95, 239, 0.1);
+}
+
+button[type="submit"] {
+    width: 100%;
+    background: #5d5fef;
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+button[type="submit"]:hover {
+    background: #4a4cd8;
+}
+
+.alert {
+    background: #fee2e2;
+    color: #ef4444;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 0.85rem;
+}
+
+.footer-link {
+    margin-top: 20px;
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.footer-link a {
+    color: #5d5fef;
+    text-decoration: none;
+    font-weight: 600;
+}

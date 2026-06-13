@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>UDAVA Analytics</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style/index.css') }}">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
+<body>
+
+<header>
+    <div class="header-container">
+        <div class="logo">UDAVA ANALYTICS</div>
+        <div>
+            {% if active_dataset %}Dataset: <strong>{{ active_dataset.nama_dataset }}</strong>{% endif %}
+        </div>
+        <div>
+            Welcome <strong>{{ current_user.username }}</strong>
+            {% if current_user.role == 'admin' %}
+                <a class="admntbtn" href="{{ url_for('manage_users') }}">Admin</a>
+            {% endif %}
+        </div>
+    </div>
+</header>
+
+<main>
+    <aside class="sidebar">
+        <div class="sidea">
+            <form method="post" enctype="multipart/form-data">
+                <input type="file" name="file" accept=".csv,.xlsx" required>
+                <button type="submit">Upload Dataset</button>
+            </form>
+
+            <h3>Dataset</h3>
+            <div class="dataset-container">
+                {% for d in datasets %}
+                <div class="dataset-list">
+                    <a href="/?dataset={{ d.id }}" class="dataset-name-truncate" data-full="{{ d.nama_dataset }}">
+                        {{ d.nama_dataset }}
+                    </a>
+                    <form method="post" action="/dataset/delete/{{ d.id }}" style="display:inline">
+                        <button onclick="return confirm('Hapus dataset?')">🗑</button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <a class="logout" href="{{ url_for('logout') }}">Logout</a>
+    </aside>
+
+    <section class="container">
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert-success" style="padding: 15px; background-color: #dcfce7; color: #15803d; border-radius: 8px; margin-bottom: 20px; border: 1px solid #bbf7d0; font-weight: 600;">
+                {{ message }}
+            </div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+        <form method="get" action="/">
+            <input type="hidden" name="dataset" value="{{ active_dataset.id }}">
+            {% if sheets and sheets|length > 1 %}
+                <label>Sheet</label>
+                <select name="sheet"
+                        onchange="this.form.submit()"
+                        required>
+                    <option value="">-- Pilih Sheet --</option>
+                    {% for s in sheets %}
+                        <option value="{{ s }}"
+                            {% if s == selected_sheet %}selected{% endif %}>
+                            {{ s }}
+                        </option>
+                    {% endfor %}
+                </select>
+            {% endif %}
+            {% if not sheets or sheets|length <= 1 or selected_sheet %}
+                <label>Kolom Waktu</label>
+                <select name="date_col"
+                        onchange="this.form.submit()"
+                        required>
+                    <option value="">-- Pilih Kolom Waktu --</option>
+                    {% for col in date_cols %}
+                        <option value="{{ col }}"
+                            {% if col == selected_date_col %}selected{% endif %}>
+                            {{ col }}
+                        </option>
+                    {% endfor %}
+                </select>
+            {% endif %}
+
+            {% if selected_date_col %}
+                <label>Kolom Numerik</label>
+                <select name="column" id="column-select">
+                {% for col in numeric_cols %}
+                    <option value="{{ col }}"
+                    {% if col == selected_column %}selected{% endif %}>
+                    {{ col }}
+                    </option>
+                {% endfor %}
+                </select>
+            {% endif %}
+            {% if selected_sheet %}
+                <input type="hidden" name="sheet" value="{{ selected_sheet }}">
+            {% endif %}
+        </form>
+        {% if true %}
+        <div class="controls">
+            
+            <label><input type="checkbox" id="resample-check"> Gunakan Resample</label>
+        </div>
+
+        <div class="controls">
+            <label>
+                <input type="checkbox" id="workingDayToggle">
+                Filter Hari Kerja
+            </label>
+        </div>
+        <div id="sheetErrorBox"
+            style="display:none;
+                    padding:14px;
+                    margin:15px 0;
+                    border-radius:8px;
+                    background:#fff7ed;
+                    border:1px solid #fed7aa;
+                    color:#9a3412;
+                    font-weight:600;">
+        </div>
+        <!-- "Analisis Hari Kerja" control removed per request -->
+
+        <div class="controls">
+            <label>
+                <input type="checkbox" id="compare-universal-toggle">
+                Bandingkan Field
+            </label>
+
+            <select id="compare-universal-field" style="display:none;">
+                {% for col in numeric_cols %}
+                    <option value="{{ col }}">{{ col }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Cards Analisis -->
+        <div class="cards">
+            <div class="card">Mean: <span id="mean">-</span></div>
+            <div class="card">Median: <span id="median">-</span></div>
+            <div class="card">Std: <span id="std">-</span></div>
+            <div class="card">Fluktuasi Menonjol: <span id="anomaly">-</span></div>
+            <div class="card">Trend: <span id="trend">-</span></div>
+        </div>
+
+        <!-- Analisis Tren Detail -->
+        {% if true %}
+        <div class="analysis-section">
+            <h3>Analisis Tren Detail</h3>
+            <div class="trend-details">
+                <div class="trend-item">
+                    <h4>📈 Kenaikan</h4>
+                    <p>Total Kenaikan: <span id="total_increase">-</span></p>
+                    <p>Rata-rata Kenaikan: <span id="avg_increase">-</span></p>
+                    <p>Jumlah Periode Naik: <span id="increase_count">-</span></p>
+                </div>
+                <div class="trend-item">
+                    <h4>📉 Penurunan</h4>
+                    <p>Total Penurunan: <span id="total_decrease">-</span></p>
+                    <p>Rata-rata Penurunan: <span id="avg_decrease">-</span></p>
+                    <p>Jumlah Periode Turun: <span id="decrease_count">-</span></p>
+                </div>
+                <div class="trend-item">
+                    <h4>📊 Persentase Perubahan</h4>
+                    <p>Rata-rata % Perubahan: <span id="avg_pct">-</span>%</p>
+                    <p>Max % Naik: <span id="max_pct">-</span>%</p>
+                    <p>Max % Turun: <span id="min_pct">-</span>%</p>
+                </div>
+                <div class="trend-item">
+                    <h4>✅ Kelengkapan Data</h4>
+                    <p>Data Lengkap: <span id="completeness">-</span>%</p>
+                    <p>Missing Values: <span id="missing">-</span></p>
+                    <p>Total Data Points: <span id="total_points">-</span></p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Plot Utama -->
+        <div class="plot-wrapper">
+            <div id="plotDiv" style="width:100%; height:600px;"></div>
+        </div>
+
+        <!-- Analisis Tahunan -->
+        <h3>Analisis Tahunan</h3>
+        <select id="yearSelect"></select>
+
+        <label>
+            <input type="checkbox" id="compare-yearly-toggle">
+            Bandingkan YoY
+        </label>
+
+        <div id="yearly-compare-controls" style="display:none;">
+            <select id="compare-yearly-year"></select>
+            <select id="compare-yearly-field">
+                {% for col in numeric_cols %}
+                    <option value="{{ col }}">{{ col }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div id="yearlyAnalysis" class="cards">
+            <div class="card">Mean: <span id="y-mean">-</span></div>
+            <div class="card">Median: <span id="y-median">-</span></div>
+            <div class="card">Std: <span id="y-std">-</span></div>
+            <div class="card">Fluktuasi Menonjol: <span id="y-anomaly">-</span></div>
+            <div class="card">Trend: <span id="y-trend">-</span></div>
+        </div>
+        <div class="analysis-section" id="yearlyDetail" style="display:none;">
+            <h3>Analisis Tren Tahunan</h3>
+            <div class="trend-details">
+                <div class="trend-item">
+                    <h4>📈 Kenaikan</h4>
+                    <p>Total Kenaikan: <span id="y-total-increase">-</span></p>
+                    <p>Rata-rata Kenaikan: <span id="y-avg-increase">-</span></p>
+                    <p>Jumlah Periode Naik: <span id="y-increase-count">-</span></p>
+                </div>
+                <div class="trend-item">
+                    <h4>📉 Penurunan</h4>
+                    <p>Total Penurunan: <span id="y-total-decrease">-</span></p>
+                    <p>Rata-rata Penurunan: <span id="y-avg-decrease">-</span></p>
+                    <p>Jumlah Periode Turun: <span id="y-decrease-count">-</span></p>
+                </div>
+                <div class="trend-item">
+                    <h4>📊 Persentase Perubahan</h4>
+                    <p>Rata-rata %: <span id="y-avg-pct">-</span>%</p>
+                    <p>Max % Naik: <span id="y-max-pct">-</span>%</p>
+                    <p>Max % Turun: <span id="y-min-pct">-</span>%</p>
+                </div>
+                <div class="trend-item">
+                    <h4>✅ Kelengkapan Data</h4>
+                    <p>Data Lengkap: <span id="y-completeness">-</span>%</p>
+                    <p>Jumlah Bulan Valid: <span id="y-valid-months">-</span></p>
+                </div>
+            </div>
+        </div>
+        <div class="plot-wrapper">
+            <div id="yearlyChart" style="height:400px;"></div>
+        </div>
+
+        <!-- Analisis Bulanan -->
+        <h3>Analisis Bulanan</h3>
+        <select id="monthSelect"></select>
+
+        <label>
+            <input type="checkbox" id="compare-monthly-toggle">
+            Bandingkan MoM
+        </label>
+
+        <div id="monthly-compare-controls" style="display:none;">
+            <select id="compare-monthly-year"></select>
+            <select id="compare-monthly-month"></select>
+            <select id="compare-monthly-field">
+                {% for col in numeric_cols %}
+                    <option value="{{ col }}">{{ col }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div id="monthlyAnalysis" class="cards">
+            <div class="card">Mean: <span id="m-mean">-</span></div>
+            <div class="card">Median: <span id="m-median">-</span></div>
+            <div class="card">Std: <span id="m-std">-</span></div>
+            <div class="card">Fluktuasi Menonjol: <span id="m-anomaly">-</span></div>
+            <div class="card">Trend: <span id="m-trend">-</span></div>
+        </div>
+        <div class="analysis-section" id="monthlyDetail" style="display:none;">
+            <h3>Analisis Tren Bulanan</h3>
+            <div class="trend-details">
+                <div class="trend-item">
+                    <h4>📈 Kenaikan</h4>
+                    <p>Total Kenaikan: <span id="m-total-increase">-</span></p>
+                    <p>Rata-rata Kenaikan: <span id="m-avg-increase">-</span></p>
+                    <p>Jumlah Periode Naik: <span id="m-increase-count">-</span></p>
+                </div>
+                <div class="trend-item">
+                    <h4>📉 Penurunan</h4>
+                    <p>Total Penurunan: <span id="m-total-decrease">-</span></p>
+                    <p>Rata-rata Penurunan: <span id="m-avg-decrease">-</span></p>
+                    <p>Jumlah Periode Turun: <span id="m-decrease-count">-</span></p>
+                </div>
+                <div class="trend-item">
+                    <h4>📊 Persentase Perubahan</h4>
+                    <p>Rata-rata %: <span id="m-avg-pct">-</span>%</p>
+                    <p>Max % Naik: <span id="m-max-pct">-</span>%</p>
+                    <p>Max % Turun: <span id="m-min-pct">-</span>%</p>
+                </div>
+                <div class="trend-item">
+                    <h4>✅ Kelengkapan Data</h4>
+                    <p>Data Lengkap: <span id="m-completeness">-</span>%</p>
+                    <p>Jumlah Hari Valid: <span id="m-valid-days">-</span></p>
+                </div>
+            </div>
+        </div>
+        <div class="plot-wrapper">
+            <div id="monthlyChart" style="height:400px;"></div>
+        </div>
+
+        {% else %}
+            <h2>Pilih dataset untuk analisis</h2>
+        {% endif %}
+    </section>
+</main>
+
+<script>
+console.log("JS LOADED OK");
+
+const datasetId = {{ active_dataset.id }};
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    const columnSelect = document.getElementById('column-select');
+    const resampleCheck = document.getElementById('resample-check');
+    const yearSelect = document.getElementById('yearSelect');
+    const monthSelect = document.getElementById('monthSelect');
+    const selectedDateCol = new URLSearchParams(window.location.search).get('date_col');
+
+    const compareUniversalToggle = document.getElementById('compare-universal-toggle');
+    const compareUniversalField = document.getElementById('compare-universal-field');
+
+    const compareYearlyToggle = document.getElementById('compare-yearly-toggle');
+    const yearlyCompareBox = document.getElementById('yearly-compare-controls');
+    const compareYearlyYear = document.getElementById('compare-yearly-year');
+    const compareYearlyField = document.getElementById('compare-yearly-field');
+
+    const compareMonthlyToggle = document.getElementById('compare-monthly-toggle');
+    const monthlyCompareBox = document.getElementById('monthly-compare-controls');
+    const compareMonthlyMonth = document.getElementById('compare-monthly-month');
+    const compareMonthlyField = document.getElementById('compare-monthly-field');
+    const compareMonthlyYear = document.getElementById('compare-monthly-year');
+
+    const workingDayToggle = document.getElementById('workingDayToggle');
+
+    const errorBox = document.getElementById('sheetErrorBox');
+
+    function showSheetError(message){
+        if(errorBox){
+            errorBox.innerText = message;
+            errorBox.style.display = 'block';
+        }
+
+        // bersihkan grafik
+        try {
+            Plotly.purge('plotDiv');
+            Plotly.purge('yearlyChart');
+            Plotly.purge('monthlyChart');
+        } catch(e){}
+
+        // reset semua card ke "-"
+        document.querySelectorAll('.card span').forEach(el=>{
+            el.innerText = '-';
+        });
+    }
+
+    function clearSheetError(){
+        if(errorBox){
+            errorBox.style.display = 'none';
+            errorBox.innerText = '';
+        }
+    }
+
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get('working_day') === '1') {
+        workingDayToggle.checked = true;
+    }
+
+    let periodData = {};
+    let workingOnly = false;
+
+    function safeFixed(val, d=2){
+        return (val !== null && val !== undefined) ? val.toFixed(d) : '-';
+    }
+
+    workingDayToggle.onchange = () => {
+        reloadAllAnalytics();
+    };
+
+    function updateURLAndReload(extraParams = {}) {
+        const url = new URL(window.location.href);
+
+        Object.entries(extraParams).forEach(([key, value]) => {
+            if (value === null || value === false) {
+                url.searchParams.delete(key);
+            } else {
+                url.searchParams.set(key, value);
+            }
+        });
+
+        window.location.href = url.toString();
+    }
+
+    function reloadAllAnalytics() {
+        if (!columnSelect || !columnSelect.value) return;
+
+        loadPlot(columnSelect.value, resampleCheck.checked, { working_day: workingDayToggle.checked });
+
+        loadStats(columnSelect.value);
+
+        if (yearSelect.value) {
+            loadYearly(yearSelect.value);
+        }
+
+        if (monthSelect.value) {
+            loadMonthly(monthSelect.value);
+        }
+    }
+
+    function reloadMainPlot(){
+        loadPlot(columnSelect.value, resampleCheck.checked, { working_day: workingDayToggle.checked });
+    }
+
+    function buildHolidayShapes(calendar) {
+        const shapes = [];
+
+        calendar.forEach(c => {
+            let color = null;
+
+            if (c.is_holiday) color = 'rgba(255,0,0,0.15)';
+            else if (c.is_weekend) color = 'rgba(255,165,0,0.12)';
+            else if (c.is_ramadan) color = 'rgba(0,200,0,0.12)';
+
+            if (!color) return;
+
+            const start = new Date(c.x);
+            const end = new Date(c.x);
+            end.setDate(end.getDate() + 1); // ⬅️ KUNCI UTAMA
+
+            shapes.push({
+                type: 'rect',
+                xref: 'x',
+                yref: 'paper',
+                x0: start.toISOString().split('T')[0],
+                x1: end.toISOString().split('T')[0],
+                y0: 0,
+                y1: 1,
+                fillcolor: color,
+                line: { width: 0 },
+                layer: 'below'
+            });
+        });
+
+        return shapes;
+    }
+
+
+    function buildHolidayHoverLayer(calendar) {
+        const x = [];
+        const text = [];
+
+        calendar.forEach(c => {
+            if (c.is_holiday) {
+                x.push(c.x);
+                text.push(`Libur Nasional: ${c.holiday_name || '-'}`);
+            } else if (c.is_weekend) {
+                x.push(c.x);
+                text.push('Akhir Pekan');
+            } else if (c.is_ramadan) {
+                x.push(c.x);
+                text.push('Bulan Ramadan');
+            }
+        });
+
+        return {
+            x,
+            y: new Array(x.length).fill(null),
+            mode: 'markers',
+            marker: { size: 20, opacity: 0 },
+            hoverinfo: 'text',
+            text,
+            showlegend: false
+        };
+    }
+
+    function buildCalendarLegendTraces() {
+        return [
+            {
+                x: [null],
+                y: [null],
+                mode: 'markers',
+                marker: { size: 12, color: 'rgba(255,0,0,0.3)' },
+                name: 'Hari Libur Nasional',
+                showlegend: true,
+                hoverinfo: 'skip'
+            },
+            {
+                x: [null],
+                y: [null],
+                mode: 'markers',
+                marker: { size: 12, color: 'rgba(255,165,0,0.25)' },
+                name: 'Akhir Pekan',
+                showlegend: true,
+                hoverinfo: 'skip'
+            },
+            {
+                x: [null],
+                y: [null],
+                mode: 'markers',
+                marker: { size: 12, color: 'rgba(0,128,0,0.2)' },
+                name: 'Ramadan',
+                showlegend: true,
+                hoverinfo: 'skip'
+            }
+        ];
+    }
+
+
+
+    /* =========================================================
+       UNIVERSAL GRAPH (FIELD COMPARISON)
+    ========================================================= */
+    async function loadStats(column){
+        const s = await fetch(
+            `/stats/${datasetId}` +
+            `?column=${column}` +
+            `&date_col=${selectedDateCol}` +
+            `&working_day=${workingDayToggle.checked ? 1 : 0}`
+        ).then(r=>r.json());
+
+        if (s.status === 'error' && s.type === 'MISSING_COLUMN') {
+            showSheetError(s.message);
+            return;
+        }
+
+        clearSheetError();
+
+        document.getElementById('mean').innerText = safeFixed(s.mean);
+        document.getElementById('median').innerText = safeFixed(s.median);
+        document.getElementById('std').innerText = safeFixed(s.std);
+        document.getElementById('anomaly').innerText = s.anomaly_count ?? '-';
+        document.getElementById('trend').innerText = s.trend ?? '-';
+
+        document.getElementById('total_increase').innerText = safeFixed(s.total_increase);
+        document.getElementById('avg_increase').innerText =
+            s.increase_count ? safeFixed(s.total_increase/s.increase_count) : '-';
+        document.getElementById('increase_count').innerText = s.increase_count ?? '-';
+
+        document.getElementById('total_decrease').innerText = safeFixed(s.total_decrease);
+        document.getElementById('avg_decrease').innerText =
+            s.decrease_count ? safeFixed(s.total_decrease/s.decrease_count) : '-';
+        document.getElementById('decrease_count').innerText = s.decrease_count ?? '-';
+
+        document.getElementById('avg_pct').innerText = safeFixed(s.avg_pct_change);
+        document.getElementById('max_pct').innerText = safeFixed(s.max_pct);
+        document.getElementById('min_pct').innerText = safeFixed(s.min_pct);
+
+        document.getElementById('missing').innerText = s.missing_count ?? '-';
+        document.getElementById('completeness').innerText = s.completeness_pct ?? '-';
+        document.getElementById('total_points').innerText = s.count ?? '-';
+    }
+
+    async function loadPlot(column, useResample=false, options={}){
+
+        const params = new URLSearchParams({
+            column,
+            resample: useResample,
+            date_col: selectedDateCol,
+            working_day: options.working_day ? 1 : 0
+        });
+
+        const res = await fetch(`/plot/${datasetId}?${params.toString()}`);
+        const data = await res.json();
+
+        if (data.status === 'error' && data.type === 'MISSING_COLUMN') {
+            showSheetError(data.message);
+            return;
+        }
+
+        clearSheetError();
+
+        const traces = [{
+            x: data.x,
+            y: data.y,
+            mode: 'lines+markers',
+            name: column,
+            customdata: data.pct_change,
+            hovertemplate:
+                'Nilai: %{y:,.2f}<br>' +
+                'Perubahan: %{customdata:+.2f}%<extra></extra>'
+        }];
+
+        if(data.trend?.length){
+            traces.push({
+                x: data.x,
+                y: data.trend,
+                mode: 'lines',
+                name: 'Trend',
+                line: { dash:'dash' }
+            });
+        }
+
+        if(data.anomalies?.length){
+            const ax=[], ay=[];
+            data.anomalies.forEach((a,i)=>{
+                if(a){ ax.push(data.x[i]); ay.push(data.y[i]); }
+            });
+            traces.push({
+                x: ax, y: ay,
+                mode:'markers',
+                name:'Fluktuasi Menonjol',
+                marker:{color:'orange',size:10,symbol:'o'}
+            });
+        }
+
+        if(compareUniversalToggle.checked){
+            const field = compareUniversalField.value;
+            if(field && field !== column){
+                const cmp = await fetch(
+                    `/plot/${datasetId}?column=${field}&resample=${useResample}&date_col=${selectedDateCol}` +
+                    `&working_day=${workingDayToggle.checked ? 1 : 0}`
+                ).then(r=>r.json());
+
+                if (cmp.status === 'error' && cmp.type === 'MISSING_COLUMN') {
+                    showSheetError(cmp.message);
+                    return;
+                }
+
+                clearSheetError();
+
+                traces.push({
+                    x: cmp.x,
+                    y: cmp.y,
+                    mode:'lines',
+                    name:`${compareUniversalField.value}`,
+                    customdata: cmp.pct_change,
+                    hovertemplate:
+                        'Nilai: %{y:,.2f}<br>'+
+                        'Perubahan: %{customdata:+.2f}%<extra></extra>',
+                    opacity:0.35,
+                    line:{width:3}
+                });
+            }
+        }
+
+        const layout = {
+            title: `Analisis Tren (${column})`,
+            hovermode: 'x unified'
+        };
+
+        if (workingDayToggle.checked && data.calendar) {
+            layout.shapes = buildHolidayShapes(data.calendar);
+
+            traces.push(
+                buildHolidayHoverLayer(data.calendar)
+            );
+
+            traces.push(
+                ...buildCalendarLegendTraces()
+            );
+        } else {
+            layout.shapes = [];
+        }
+        Plotly.react('plotDiv', traces, layout);
+    }
+
+    /* =========================================================
+       YEARLY GRAPH (YoY VISUAL)
+    ========================================================= */
+    async function loadYearly(year){
+
+        const res = await fetch(
+            `/api/yearly/${datasetId}/${year}?column=${columnSelect.value}&date_col=${selectedDateCol}`
+        );
+        const d = await res.json();
+
+        if (d.status === 'error' && d.type === 'MISSING_COLUMN') {
+            showSheetError(d.message);
+            return;
+        }
+        clearSheetError();
+
+        if(!d.data?.length){
+            Plotly.purge('yearlyChart'); return;
+        }
+
+        const x = d.data.map(v=>`Bulan ${v.month}`);
+        const traces = [{
+            x, y: d.data.map(v=>v.value),
+            mode:'lines+markers',
+            name:`${columnSelect.value} ${year}`,
+            customdata: d.pct_changes,
+            hovertemplate:
+                'Nilai: %{y:,.2f}<br>' +
+                'Perubahan: %{customdata}%<extra></extra>'
+        }];
+
+        if(d.trend_line?.length){
+            traces.push({
+                x, y:d.trend_line,
+                mode:'lines',
+                name:'Trend',
+                line:{dash:'dash'}
+            });
+        }
+
+        if(d.anomalies?.length){
+            traces.push({
+                x:d.anomalies.map((a,i)=>a?x[i]:null).filter(v=>v),
+                y:d.anomalies.map((a,i)=>a?d.data[i].value:null).filter(v=>v),
+                mode:'markers',
+                name:'Fluktuasi Menonjol',
+                marker:{color:'orange',size:10,symbol:'o'}
+            });
+        }
+
+        if(compareYearlyToggle.checked && compareYearlyYear.value){
+            const cmp = await fetch(
+                `/api/yearly/${datasetId}/${compareYearlyYear.value}?column=${compareYearlyField.value}&date_col=${selectedDateCol}`
+            ).then(r=>r.json());
+
+            if (cmp.status === 'error' && cmp.type === 'MISSING_COLUMN') {
+                showSheetError(cmp.message);
+                return;
+            }
+
+            clearSheetError();
+
+            // ✅ X-axis berbasis index bulan
+            const cmpX = cmp.data.map(v => `Bulan ${v.month}`);
+
+            traces.push({
+                x: cmpX,
+                y: cmp.data.map(v => v.value),
+                mode: 'lines',
+                name: `${compareYearlyField.value}`,
+                opacity: 0.35,
+                line: { width: 3 },
+                customdata: cmp.pct_changes,
+                hovertemplate:
+                    'Nilai: %{y:,.2f}<br>' +
+                    'Perubahan: %{customdata:+.2f}%<extra></extra>'
+            });
+        }
+
+        Plotly.newPlot('yearlyChart', traces, {
+            title:`Grafik Tahunan ${year}`,
+            hovermode:'x unified'
+        });
+
+        fetch(
+            `/api/yearly-analysis/${datasetId}/${year}` +
+            `?column=${columnSelect.value}` +
+            `&date_col=${selectedDateCol}` +
+            `&working_day=${workingDayToggle.checked ? 1 : 0}`
+        )
+        .then(r=>r.json())
+        .then(d=>{
+
+            if (d.status === 'error' && d.type === 'MISSING_COLUMN') {
+                showSheetError(d.message);
+                return;
+            }
+
+            clearSheetError();
+
+            document.getElementById('y-mean').innerText = safeFixed(d.mean);
+            document.getElementById('y-median').innerText = safeFixed(d.median);
+            document.getElementById('y-std').innerText = safeFixed(d.std);
+            document.getElementById('y-anomaly').innerText = d.anomaly_count ?? '-';
+            document.getElementById('y-trend').innerText = d.trend ?? '-';
+
+            document.getElementById('y-total-increase').innerText = safeFixed(d.total_increase);
+            document.getElementById('y-avg-increase').innerText =
+                d.increase_count ? safeFixed(d.total_increase/d.increase_count) : '-';
+            document.getElementById('y-increase-count').innerText = d.increase_count ?? '-';
+
+            document.getElementById('y-total-decrease').innerText = safeFixed(d.total_decrease);
+            document.getElementById('y-avg-decrease').innerText =
+                d.decrease_count ? safeFixed(d.total_decrease/d.decrease_count) : '-';
+            document.getElementById('y-decrease-count').innerText = d.decrease_count ?? '-';
+
+            document.getElementById('y-avg-pct').innerText = safeFixed(d.avg_pct);
+            document.getElementById('y-max-pct').innerText = safeFixed(d.max_pct);
+            document.getElementById('y-min-pct').innerText = safeFixed(d.min_pct);
+
+            document.getElementById('y-completeness').innerText = d.completeness_pct ?? '-';
+            document.getElementById('y-valid-months').innerText = d.valid_months ?? '-';
+
+            document.getElementById('yearlyDetail').style.display = 'block';
+        });
+    }
+
+    function populateCompareMonthlyYear(){
+        compareMonthlyYear.innerHTML = '<option value="">Pilih Tahun</option>';
+
+        Object.keys(periodData).forEach(y=>{
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.textContent = y;
+            compareMonthlyYear.appendChild(opt);
+        });
+    }
+
+    function populateMonthSelect(year){
+        if(!periodData[year]){
+            console.warn("❌ Tidak ada data bulan untuk tahun", year);
+            return;
+        }
+
+        // Always include all months available for the year (sorted by month number)
+        const months = periodData[year].slice().sort((a,b) => (a.month || 0) - (b.month || 0));
+        months.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.month;
+            opt.textContent = m.month_name || `Bulan ${m.month}`;
+            if (m.is_full) opt.dataset.is_full = '1';
+            monthSelect.appendChild(opt);
+        });
+    }
+
+    function populateCompareMonthlyMonth(year){
+        compareMonthlyMonth.innerHTML = '<option value="">Pilih Bulan</option>';
+
+        if(!periodData[year]) return;
+
+        periodData[year].forEach(m=>{
+            
+                const opt = document.createElement('option');
+                opt.value = m.month;
+                opt.textContent = m.month_name || `Bulan ${m.month}`;
+                compareMonthlyMonth.appendChild(opt);
+            
+        });
+    }
+
+
+    function populateCompareYearlyYear(mainYear){
+        compareYearlyYear.innerHTML = '<option value="">Bandingkan Tahun</option>';
+
+        Object.keys(periodData).forEach(y=>{
+            if(y !== String(mainYear) || y == String(mainYear)){
+                const opt = document.createElement('option');
+                opt.value = y;
+                opt.textContent = y;
+                compareYearlyYear.appendChild(opt);
+            }
+        });
+    }
+
+    /* =========================================================
+       MONTHLY GRAPH (MoM VISUAL)
+    ========================================================= */
+    async function loadMonthly(month){
+        const overlayMode = compareMonthlyToggle.checked &&
+                    compareMonthlyYear.value &&
+                    compareMonthlyMonth.value;
+
+        if(!month || !yearSelect.value){
+            Plotly.purge('monthlyChart');
+            return;
+        }
+
+        const d = await fetch(
+            `/api/monthly/${datasetId}/${yearSelect.value}/${month}` +
+            `?column=${columnSelect.value}` +
+            `&date_col=${selectedDateCol}` +
+            `&working_day=${workingDayToggle.checked ? 1 : 0}`
+        ).then(r=>r.json());
+
+        if (d.status === 'error' && d.type === 'MISSING_COLUMN') {
+            showSheetError(d.message);
+            return;
+        }
+
+        clearSheetError();
+
+        // Keep day-index labels but use date x-axis so shading aligns
+        const baseX = d.y.map((_, i) => i + 1);
+        let compareCalendar = null;
+        const traces = [{
+            x: overlayMode ? baseX : d.x, // date strings so shapes align
+            y: d.y,
+            mode: 'lines+markers',
+            name: `${columnSelect.value} (Bulan Utama)`,
+            // customdata: [date, pct_change, dayIndex]
+            customdata: d.x.map((tgl, i) => [tgl, d.pct_changes[i], i + 1]),
+            hovertemplate:
+                'Hari ke-%{customdata[2]}<br>' +
+                'Tanggal: %{customdata[0]}<br>' +
+                'Nilai: %{y:,.2f}<br>' +
+                'Perubahan: %{customdata[1]:+.2f}%<extra></extra>'
+        }];
+
+        // 🔹 Trend
+        if(d.trend_line?.length){
+            traces.push({
+                x: d.x,
+                y: d.trend_line,
+                mode: 'lines',
+                name: 'Trend',
+                line:{dash:'dash'}
+            });
+        }
+
+        // 🔴 Anomali
+        if(d.anomalies?.length){
+            traces.push({
+                x: d.anomalies.map((a,i)=>a?d.x[i]:null).filter(v=>v),
+                y: d.anomalies.map((a,i)=>a?d.y[i]:null).filter(v=>v),
+                mode:'markers',
+                name:'Fluktuasi Menonjol',
+                marker:{color:'orange',size:10,symbol:'o'}
+            });
+        }
+
+        // 🔁 MoM COMPARISON (INI FIX UTAMA)
+        if(
+            compareMonthlyToggle.checked &&
+            compareMonthlyYear.value &&
+            compareMonthlyMonth.value
+        ){
+            const cmp = await fetch(
+                `/api/monthly/${datasetId}/${compareMonthlyYear.value}/${compareMonthlyMonth.value}` +
+                `?column=${compareMonthlyField.value}` +
+                `&date_col=${selectedDateCol}` +
+                `&working_day=${workingDayToggle.checked ? 1 : 0}`
+            ).then(r=>r.json());
+
+            if (cmp.status === 'error' && cmp.type === 'MISSING_COLUMN') {
+                showSheetError(cmp.message);
+                return;
+            }
+
+            clearSheetError();
+
+            // capture comparison calendar for combined shading
+            compareCalendar = cmp.calendar || null;
+            if(overlayMode) {
+                const cmpX = cmp.y.map((_, i) => i + 1);
+
+                traces.push({
+                    x: cmpX,
+                    y: cmp.y,
+                    mode:'lines',
+                    name:`${compareMonthlyField.value} (${compareMonthlyMonth.value}/${compareMonthlyYear.value})`,
+                    opacity:0.35,
+                    line:{width:3},
+                    customdata: cmp.x.map((tgl, i) => [tgl, cmp.pct_changes[i], i + 1]),
+                    hovertemplate:
+                        'Hari ke-%{customdata[2]}<br>' +
+                        'Tanggal: %{customdata[0]}<br>' +
+                        'Nilai: %{y:,.2f}<extra></extra>' +
+                        '<br>Perubahan: %{customdata[1]:+.2f}%'
+                });
+            }
+        }
+
+        // Build layout and add holiday shapes when applicable (only shading)
+        const layout = {
+            title:`Perbandingan Pola Bulanan`,
+            hovermode:'x unified',
+            xaxis:overlayMode 
+            ? {
+                title: 'Hari ke-',
+                type: 'linear',
+                dtick: 1
+            }
+            : {
+                title:'Hari ke-',
+                type:'date',
+                tickmode:'array',
+                tickvals: d.x,
+                ticktext: baseX
+            }
+        };
+
+        if (workingDayToggle.checked && d.calendar) {
+            // combine shapes from main month and comparison month (if any)
+            const shapes = buildHolidayShapes(d.calendar).slice();
+            if(compareCalendar){
+                shapes.push(...buildHolidayShapes(compareCalendar));
+            }
+            layout.shapes = shapes;
+
+            // add invisible hover-layer traces for calendars so hover texts appear
+            traces.push(buildHolidayHoverLayer(d.calendar));
+            if(compareCalendar){
+                traces.push(buildHolidayHoverLayer(compareCalendar));
+            }
+
+            // add legend markers
+            traces.push(...buildCalendarLegendTraces());
+        }
+
+        Plotly.newPlot('monthlyChart', traces, layout);
+
+        // ================= ANALISIS BULANAN (TIDAK DIUBAH) =================
+        fetch(
+            `/api/monthly-analysis/${datasetId}/${yearSelect.value}/${month}` +
+            `?column=${columnSelect.value}` +
+            `&date_col=${selectedDateCol}` +
+            `&working_day=${workingDayToggle.checked ? 1 : 0}`
+        )
+        .then(r=>r.json())
+        .then(d=>{
+            if (d.status === 'error' && d.type === 'MISSING_COLUMN') {
+                showSheetError(d.message);
+                return;
+            }
+
+            clearSheetError();
+            document.getElementById('m-mean').innerText = safeFixed(d.mean);
+            document.getElementById('m-median').innerText = safeFixed(d.median);
+            document.getElementById('m-std').innerText = safeFixed(d.std);
+            document.getElementById('m-anomaly').innerText = d.anomaly_count ?? '-';
+            document.getElementById('m-trend').innerText = d.trend ?? '-';
+
+            document.getElementById('m-total-increase').innerText = safeFixed(d.total_increase);
+            document.getElementById('m-avg-increase').innerText =
+                d.increase_count ? safeFixed(d.total_increase/d.increase_count) : '-';
+            document.getElementById('m-increase-count').innerText = d.increase_count ?? '-';
+
+            document.getElementById('m-total-decrease').innerText = safeFixed(d.total_decrease);
+            document.getElementById('m-avg-decrease').innerText =
+                d.decrease_count ? safeFixed(d.total_decrease/d.decrease_count) : '-';
+            document.getElementById('m-decrease-count').innerText = d.decrease_count ?? '-';
+
+            document.getElementById('m-avg-pct').innerText = safeFixed(d.avg_pct);
+            document.getElementById('m-max-pct').innerText = safeFixed(d.max_pct);
+            document.getElementById('m-min-pct').innerText = safeFixed(d.min_pct);
+
+            document.getElementById('m-completeness').innerText = d.completeness_pct ?? '-';
+            document.getElementById('m-valid-days').innerText = d.valid_days ?? '-';
+
+            document.getElementById('monthlyDetail').style.display = 'block';
+        });
+    }
+
+    /* =========================================================
+       TOGGLE EVENTS
+    ========================================================= */
+    function updateUniversalCompareField(){
+        if(!compareUniversalField) return;
+        // disable option equal to current main column to avoid comparing same field
+        Array.from(compareUniversalField.options).forEach(opt=>{
+            opt.disabled = (columnSelect && columnSelect.value && opt.value === columnSelect.value);
+        });
+        if (columnSelect && columnSelect.value && compareUniversalField.value === columnSelect.value) {
+            compareUniversalField.value = '';
+        }
+    }
+
+    // initial sync
+    updateUniversalCompareField();
+    compareUniversalToggle.onchange = () => {
+        compareUniversalField.style.display =
+            compareUniversalToggle.checked ? 'inline-block':'none';
+        updateUniversalCompareField();
+        loadPlot(columnSelect.value, resampleCheck.checked);
+    };
+
+    compareUniversalField.onchange = () => {
+        loadPlot(columnSelect.value, resampleCheck.checked);
+    };
+
+    compareYearlyToggle.onchange = () => {
+        yearlyCompareBox.style.display =
+            compareYearlyToggle.checked ? 'block':'none';
+
+        if(compareYearlyToggle.checked){
+            populateCompareYearlyYear(yearSelect.value);
+        }
+
+        loadYearly(yearSelect.value);
+    };
+
+    compareMonthlyToggle.onchange = () => {
+        monthlyCompareBox.style.display =
+            compareMonthlyToggle.checked ? 'block':'none';
+
+        if(compareMonthlyToggle.checked){
+            populateCompareMonthlyYear();
+            populateCompareMonthlyMonth(compareMonthlyYear.value || yearSelect.value);
+        }
+
+        loadMonthly(monthSelect.value);
+    };
+
+    compareYearlyYear.onchange = () => loadYearly(yearSelect.value);
+    compareYearlyField.onchange = () => loadYearly(yearSelect.value);
+
+    /* =========================================================
+       PERIOD LOAD
+    ========================================================= */
+    fetch(`/api/periods/${datasetId}?date_col=${selectedDateCol}`)
+    .then(r=>r.json())
+    .then(d=>{
+        if (d.status === 'error' && d.type === 'MISSING_COLUMN') {
+            showSheetError(d.message);
+            return;
+        }
+    
+        clearSheetError();
+        periodData=d;
+        yearSelect.innerHTML='';
+        // populate all years (include years even if no `is_full` months)
+        Object.keys(d).forEach(y=>{
+            yearSelect.add(new Option(y,y));
+        });
+        if(yearSelect.options.length > 0){
+            yearSelect.value = yearSelect.options[0].value;
+            populateMonthSelect(yearSelect.value);
+
+            if(monthSelect.options.length > 0){
+                // pick first non-empty option (skip the 'Pilih Bulan' placeholder)
+                const firstOpt = Array.from(monthSelect.options).find(o => o.value && o.value !== '');
+                const firstMonth = firstOpt ? firstOpt.value : monthSelect.options[0].value;
+                monthSelect.value = firstMonth;
+                // also mark the option as selected and update badge text
+                const chosenOpt = Array.from(monthSelect.options).find(o => o.value === String(firstMonth));
+                if (chosenOpt) {
+                    chosenOpt.selected = true;
+                    const badge = document.getElementById('monthBadge');
+                    if (badge) badge.innerText = chosenOpt.textContent || '';
+                }
+
+                // If column not selected yet, try to select first numeric column
+                if (columnSelect) {
+                    if (!columnSelect.value && columnSelect.options.length > 0) {
+                        columnSelect.value = columnSelect.options[0].value;
+                    }
+                }
+
+                // If column is available and selected, reload all analytics (plot/stats/yearly/monthly)
+                if (columnSelect && columnSelect.value) {
+                    reloadAllAnalytics();
+                } else {
+                    // fallback: at least load monthly/yearly visuals (might be empty without column)
+                    loadMonthly(firstMonth);
+                    loadYearly(yearSelect.value);
+                }
+
+                // Ensure any listeners see the selection (trigger change event)
+                try {
+                    monthSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                } catch (e) {
+                    // ignore if dispatch fails in some browsers
+                }
+            } else {
+                loadYearly(yearSelect.value);
+            }
+        }
+    });
+
+    columnSelect.onchange = () => {
+        updateUniversalCompareField();
+        reloadAllAnalytics();
+    };
+
+    yearSelect.onchange = ()=>{
+        populateMonthSelect(yearSelect.value);
+        populateCompareYearlyYear(yearSelect.value);
+        loadYearly(yearSelect.value);
+    };
+
+    monthSelect.onchange = ()=>{
+        if(monthSelect.value){
+            loadMonthly(monthSelect.value);
+        }
+    };
+
+    compareMonthlyYear.onchange = () => {
+        if(compareMonthlyYear.value){
+            populateCompareMonthlyMonth(compareMonthlyYear.value);
+            loadMonthly(monthSelect.value);
+        }
+    };
+
+    compareMonthlyMonth.onchange = () => {
+        loadMonthly(monthSelect.value);
+    };
+
+    compareMonthlyField.onchange = () => {
+        loadMonthly(monthSelect.value);
+    };
+
+    /* =========================================================
+       INITIAL LOAD
+    ========================================================= */
+    if (columnSelect && columnSelect.value) {
+        loadPlot(columnSelect.value, resampleCheck.checked);
+        loadStats(columnSelect.value);
+    }
+});
+
+</script>
+
+
+</body>
+</html>
